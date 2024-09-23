@@ -7,8 +7,12 @@ from dotenv import load_dotenv  # Import load_dotenv to load environment variabl
 
 load_dotenv()
 api_key = os.getenv("GEMINI_API_KEY")
+if not api_key:
+    raise ValueError("GEMINI_API_KEY is missing. Please add it to your environment variables.")
+
+
+os.environ["GEMINI_API_KEY"] = api_key
 # Set up API key for Gemini
-os.environ["GEMINI_API_KEY"] = api_key 
 app = Flask(__name__)
 CORS(app)  # Add CORS to the app
 
@@ -80,9 +84,9 @@ def generate_itinerary():
                         Travel: 50
                 """
         
-        filename = "./toDelBefore.txt"
-        with open(filename, "w", encoding="utf-8") as file:
-            file.write(prompt)
+        # filename = "./toDelBefore.txt"
+        # with open(filename, "w", encoding="utf-8") as file:
+        #     file.write(prompt)
 
         # Call the Gemini API with the generated prompt
         ai_response = suggest_product_title(prompt)
@@ -99,9 +103,9 @@ def generate_itinerary():
         
         next_response = suggest_product_title(corrected_prompt)
 
-        filename = "./toDel.txt"
-        with open(filename, "w", encoding="utf-8") as file:
-            file.write(next_response)
+        # filename = "./toDel.txt"
+        # with open(filename, "w", encoding="utf-8") as file:
+        #     file.write(next_response)
 
         # Return the AI-generated result as JSON
         return jsonify({"itinerary": next_response})
