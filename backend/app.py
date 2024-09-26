@@ -4,31 +4,50 @@ import os
 import google.generativeai as genai  # Import Gemini API classes
 from dotenv import load_dotenv  # Import load_dotenv to load environment variables
 
-
 load_dotenv()
 api_key = os.getenv("GEMINI_API_KEY")
 if not api_key:
     raise ValueError("GEMINI_API_KEY is missing. Please add it to your environment variables.")
 
-
 os.environ["GEMINI_API_KEY"] = api_key
 # Set up API key for Gemini
 app = Flask(__name__)
-CORS(app)  # Add CORS to the app
+
+# CORS settings to allow requests only from the Netlify frontend
+CORS(app, resources={r"/*": {"origins": "https://idyllic-cranachan-bd39e1.netlify.app/"}},
+     methods=["POST", "OPTIONS"],
+     allow_headers=["Content-Type"])
+
+@app.after_request
+def after_request(response):
+    response.headers.add('Access-Control-Allow-Origin', 'https://idyllic-cranachan-bd39e1.netlify.app/')
+    response.headers.add('Access-Control-Allow-Methods', 'POST, OPTIONS')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type')
+    return response
 
 # Function to call Gemini API with the generated prompt
 def suggest_product_title(prompt):
     model = genai.GenerativeModel('gemini-1.5-flash')  # Use the appropriate model
-
     response = model.generate_content(prompt)
-
     return response.text
 
-@app.route('/generate-itinerary', methods=['POST'])
+@app.route('/')
+def home():
+    return "Welcome to the Itinerary Generator API"
+
+@app.route('/generate-itinerary', methods=['POST', 'OPTIONS'])
 def generate_itinerary():
+
+    if request.method == 'OPTIONS':
+        return jsonify({'status': 'OK'})  # CORS preflight response
+    
     if request.method == 'POST':
         # Extracting JSON data from the request
         data = request.json
+
+        data = request.get_json(silent=True)
+        if data is None:
+            return jsonify({"error": "No data provided"}), 400
 
         # Updated fields according to the new form data
         destination_country = data.get('destination_country')
@@ -59,7 +78,7 @@ def generate_itinerary():
                 Ensure the trip is enjoyable, well-paced, and highlights the important experiences in {destination_country}. 
                 Also try to incorporate activities to be done in that day if you feel so.
                 But the output should strictly follow the example's pattern.
-
+                
                 Example - If they wish to visit beaches in madras for 3 days and budget is 600:
                 Day1: 
                     Route : Hotel => Tiruvanmiur beach (10am) => Marina beach (2pm) => Night market (6pm) => Hotel (8pm)
@@ -83,10 +102,6 @@ def generate_itinerary():
                         Accommodation: 100
                         Travel: 50
                 """
-        
-        # filename = "./toDelBefore.txt"
-        # with open(filename, "w", encoding="utf-8") as file:
-        #     file.write(prompt)
 
         # Call the Gemini API with the generated prompt
         ai_response = suggest_product_title(prompt)
@@ -103,12 +118,13 @@ def generate_itinerary():
         
         next_response = suggest_product_title(corrected_prompt)
 
-        # filename = "./toDel.txt"
-        # with open(filename, "w", encoding="utf-8") as file:
-        #     file.write(next_response)
-
         # Return the AI-generated result as JSON
+        return jsonify({"itinerary": next_response})
+    else:
         return jsonify({"itinerary": next_response})
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    # The PORT environment variable is set by Render
+    # We provide a default of 10000 for local development
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host='0.0.0.0', port=port)
