@@ -14,7 +14,7 @@ os.environ["GEMINI_API_KEY"] = api_key
 app = Flask(__name__)
 
 # CORS settings to allow requests only from the Netlify frontend
-CORS(app, resources={r"/*": {"origins": "https://idyllic-cranachan-bd39e1.netlify.app/"}},
+CORS(app, resources={r"/*": {"origins": "*"}},
      methods=["POST", "OPTIONS"],
      allow_headers=["Content-Type"])
 
@@ -39,9 +39,12 @@ def home():
 def generate_itinerary():
 
     if request.method == 'OPTIONS':
-        return jsonify({'status': 'OK'})  # CORS preflight response
+        print("OPTIONS request received")
+        return jsonify({'status': 'OK'}), 200
     
     if request.method == 'POST':
+        print("POST request received with data:", request.json)
+
         # Extracting JSON data from the request
         data = request.json
 
